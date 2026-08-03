@@ -107,6 +107,9 @@
           <DropdownMenuItem :disabled="isDuplicating" @click="onDuplicate">
             {{ $t("providers.ai_radio.card.duplicate") }}
           </DropdownMenuItem>
+          <DropdownMenuItem :disabled="isSharing" @click="onShare">
+            {{ $t("providers.ai_radio.card.share") }}
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"
@@ -159,6 +162,8 @@
         />
       </button>
     </div>
+
+    <ShareShowDialog v-model:open="shareDialogOpen" :station="shareStation" />
   </div>
 </template>
 
@@ -167,6 +172,7 @@ import {
   bannerBackground,
   itemInitials,
 } from "@/components/discover/editorialArtwork";
+import ShareShowDialog from "@/components/ai-radio/ShareShowDialog.vue";
 import MediaItemThumb from "@/components/MediaItemThumb.vue";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -204,7 +210,7 @@ import {
   Square,
   TriangleAlert,
 } from "@lucide/vue";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import { toast } from "vue-sonner";
 
@@ -243,6 +249,10 @@ const isStopping = computed(
 const isDeleting = computed(() => deletingShowId.value === props.show.id);
 // Duplicate reuses the shared save-in-flight flag; there's no dedicated per-show one.
 const isDuplicating = computed(() => savingShow.value);
+
+const isSharing = ref(false);
+const shareDialogOpen = ref(false);
+const shareStation = ref<AIRadioStation | undefined>();
 
 const playlist = computed(() =>
   playlistFor(
@@ -384,6 +394,19 @@ async function onGenerateAsPlaylist() {
     const message = errorMessage(error);
     toast.error($t("providers.ai_radio.card.start_failed", [message]));
     reportStartError(message);
+  }
+}
+
+/** Sharing needs the full station (the gallery list carries a trimmed copy). */
+async function onShare() {
+  isSharing.value = true;
+  try {
+    shareStation.value = await getShow(props.show.id);
+    shareDialogOpen.value = true;
+  } catch (error) {
+    toast.error(errorMessage(error));
+  } finally {
+    isSharing.value = false;
   }
 }
 
